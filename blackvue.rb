@@ -93,6 +93,9 @@ OptionParser.new do |opts|
   opts.on("-d", "--download", "Download all files") do
     @options[:action] = "download"
   end
+  opts.on("-i", "--info", "Displays info") do
+    @options[:action] = "info"
+  end
 end.parse!(into: @options)
 
 cam = Cam.new(SETTINGS)
@@ -113,6 +116,10 @@ when 'download'
   cam.files.each do |file|
     cam.download(file)
   end
+when 'info'
+  puts cam.version
+  puts 
+  puts SETTINGS
 else
   p "Nothing to do."
 end
