@@ -46,7 +46,7 @@ class Cam
   end
 
   def download(file, path: download_path)
-    #FileUtils.mkdir_p path
+    FileUtils.mkdir_p path
     dest = File.join(File.expand_path(path), File.basename(file))
     if File.exists?(dest)
       logger.debug("#{dest} already exists...skipping")
