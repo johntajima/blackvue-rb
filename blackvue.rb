@@ -48,7 +48,7 @@ class Cam
   def download(file, path: download_path)
     FileUtils.mkdir_p path
     dest = File.join(File.expand_path(path), File.basename(file))
-    if File.exists?(dest)
+    if File.exists?(dest) && File.size(dest) > (10 * MB)
       logger.debug("#{dest} already exists...skipping")
       return
     else
