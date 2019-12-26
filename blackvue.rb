@@ -54,7 +54,7 @@ class Cam
       File.open(dest, 'w') {|f| IO.copy_stream(open(source), f) }
       log_report(dest, start_time)
     end
-  rescue Errno::EHOSTUNREACH => e
+  rescue Errno::EHOSTUNREACH, Net::OpenTimeout => e
     logger.info("[ERROR] #{e.message}")
   end
 
@@ -73,7 +73,7 @@ class Cam
 
   def get(url)
     open(read).read.gsub(/\r\n/, "\n")
-  rescue Errno::EHOSTUNREACH => e
+  rescue Errno::EHOSTUNREACH, Net::OpenTimeout => e
     logger.info("[ERROR] #{e.message} executing #{url}")
   end
 
