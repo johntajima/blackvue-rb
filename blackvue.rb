@@ -1,6 +1,5 @@
 #!/usr/bin/env ruby
 
-require 'open-uri'
 require 'fileutils'
 require 'logger'
 require 'yaml'
@@ -14,6 +13,9 @@ DEFAULT_CONFIG = {
 
 
 class Cam
+
+  require 'open-uri'
+  require 'fileutils'
 
   VERSION_PATH       = "/Config/version.bin"
   CONFIG_PATH        = "/Config/config.ini"
@@ -37,7 +39,7 @@ class Cam
 
   def files
     url = File.join(base_url, FILES_PATH)
-    response = get(url)
+    return unless response = get(url)
     _, list = response.split("\n").partition {|entry| entry.start_with?("v:") }
     list.map {|entry| entry.split(",").first.gsub(/^n\:/,'') }
   end
@@ -54,7 +56,7 @@ class Cam
       File.open(dest, 'w') {|f| IO.copy_stream(open(source), f) }
       log_report(dest, start_time)
     end
-  rescue Errno::EHOSTUNREACH, Net::OpenTimeout => e
+  rescue Errno::EHOSTUNREACH, Errno::EHOSTDOWN => e
     logger.info("[ERROR] #{e.message}")
   end
 
@@ -72,9 +74,10 @@ class Cam
   end
 
   def get(url)
-    open(read).read.gsub(/\r\n/, "\n")
-  rescue Errno::EHOSTUNREACH, Net::OpenTimeout => e
+    open(url).read.gsub(/\r\n/, "\n")
+  rescue Errno::EHOSTUNREACH, Errno::EHOSTDOWN => e
     logger.info("[ERROR] #{e.message} executing #{url}")
+    nil
   end
 
   def logger
@@ -119,9 +122,10 @@ end
 
 case @options[:action]
 when 'list'
-  files = cam.files
-  puts files
-  puts "found #{cam.files.count} files"  
+  if files = cam.files
+    puts files
+    puts "found #{files.count} files"  
+  end
 when 'download'
   FileUtils.mkdir_p SETTINGS['STORAGE_PATH'] unless File.directory?(SETTINGS['STORAGE_PATH'])
   cam.files.each {|file| cam.download(file) }
