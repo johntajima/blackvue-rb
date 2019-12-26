@@ -36,6 +36,8 @@ class Cam
   def version
     url = File.join(base_url, VERSION_PATH)
     response = open(url).read.gsub(/\r\n/, "\n")
+  rescue Errno::EHOSTUNREACH => e
+    logger.info("[ERROR] #{e.message}")
   end
 
   def files
@@ -43,6 +45,8 @@ class Cam
     response = open(url).read
     _, list = response.split("\r\n").partition {|entry| entry.start_with?("v:") }
     list.map {|entry| entry.split(",").first.gsub(/^n\:/,'') }
+  rescue Errno::EHOSTUNREACH => e
+    logger.info("[ERROR] #{e.message}")
   end
 
   def download(file, path: download_path)
@@ -60,6 +64,8 @@ class Cam
       duration = Time.now - start_time
       logger.debug("Download complete [#{dest}] [#{"%.02f" % duration}s] [#{"%.02f" % size}mb] [#{"%.04f" % (size / duration)} mb/s]")
     end
+  rescue Errno::EHOSTUNREACH => e
+    logger.info("[ERROR] #{e.message}")
   end
 
 
