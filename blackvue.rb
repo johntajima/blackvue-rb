@@ -6,24 +6,21 @@ require 'logger'
 require 'yaml'
 require 'optparse'
 
-
-puts "Blackvue Dashcam downloader"
-
 USER_CONFIG = File.expand_path("~/.blackvue_config.yml")
 DEFAULT_CONFIG = {
-  "DASHCAM_IP"       => "192.168.2.111",
+  "DASHCAM_IP"   => "192.168.2.111",
   "STORAGE_PATH" => "./blackvue_videos"
 }
 
 
 class Cam
+
   VERSION_PATH       = "/Config/version.bin"
   CONFIG_PATH        = "/Config/config.ini"
   FILES_PATH         = "/blackvue_vod.cgi"
   LIVEVIEW_PATH      = "/blackvue_live.cgi"
   REAR_LIVEVIEW_PATH = "/blackvue_live.cgi?direction=R"
-
-  MB = 1000 * 1000
+  MB                 = 1000 * 1000
 
   attr_reader :download_path, :base_url, :config
 
@@ -35,33 +32,27 @@ class Cam
 
   def version
     url = File.join(base_url, VERSION_PATH)
-    response = open(url).read.gsub(/\r\n/, "\n")
-  rescue Errno::EHOSTUNREACH => e
-    logger.info("[ERROR] #{e.message}")
+    get(url)
   end
 
   def files
     url = File.join(base_url, FILES_PATH)
-    response = open(url).read
-    _, list = response.split("\r\n").partition {|entry| entry.start_with?("v:") }
+    response = get(url)
+    _, list = response.split("\n").partition {|entry| entry.start_with?("v:") }
     list.map {|entry| entry.split(",").first.gsub(/^n\:/,'') }
-  rescue Errno::EHOSTUNREACH => e
-    logger.info("[ERROR] #{e.message}")
   end
 
   def download(file, path: download_path)
-    dest = File.join(File.expand_path(path), File.basename(file))
-    if File.exists?(dest) && File.size(dest) > (10 * MB)
+    dest   = File.join(File.expand_path(path), File.basename(file))
+    source = File.join(base_url, file)
+    if dest_exists?(dest)
       logger.debug("#{dest} already exists...skipping")
       return
     else
       start_time = Time.now
-      url = File.join(base_url, file)
-      logger.debug("Downloading [#{url}]")
-      File.open(dest, 'w') {|f| IO.copy_stream(open(url), f) }
-      size = File.size(dest).to_f / MB
-      duration = Time.now - start_time
-      logger.debug("Download complete [#{dest}] [#{"%.02f" % duration}s] [#{"%.02f" % size}mb] [#{"%.04f" % (size / duration)} mb/s]")
+      logger.debug("Downloading [#{source}]")
+      File.open(dest, 'w') {|f| IO.copy_stream(open(source), f) }
+      log_report(dest, start_time)
     end
   rescue Errno::EHOSTUNREACH => e
     logger.info("[ERROR] #{e.message}")
@@ -69,6 +60,22 @@ class Cam
 
 
   private
+
+  def log_report(dest, start_time)
+    duration = Time.now - start_time
+    size = File.size(dest).to_f / MB
+    logger.debug("Download complete [#{dest}] [#{"%.02f" % duration}s] [#{"%.02f" % size}mb] [#{"%.04f" % (size / duration)} mb/s]")
+  end
+
+  def dest_exists?(file)
+    File.exists?(file) && File.size(file) >= (10 * MB)
+  end
+
+  def get(url)
+    open(read).read.gsub(/\r\n/, "\n")
+  rescue Errno::EHOSTUNREACH => e
+    logger.info("[ERROR] #{e.message} executing #{url}")
+  end
 
   def logger
     @logger ||= begin
