@@ -50,7 +50,6 @@ class Cam
   end
 
   def download(file, path: download_path)
-    FileUtils.mkdir_p path
     dest = File.join(File.expand_path(path), File.basename(file))
     if File.exists?(dest) && File.size(dest) > (10 * MB)
       logger.debug("#{dest} already exists...skipping")
@@ -107,9 +106,7 @@ end.parse!(into: @options)
 cam = Cam.new(SETTINGS)
 if @options.empty?
   puts SETTINGS
-  files = cam.files
-  puts "found #{cam.files.count} files"
-  puts cam.version
+  puts "Found #{cam.files.count} files.\n#{cam.version}"
   exit
 end
 
@@ -119,9 +116,8 @@ when 'list'
   puts files
   puts "found #{cam.files.count} files"  
 when 'download'
-  cam.files.each do |file|
-    cam.download(file)
-  end
+  FileUtils.mkdir_p SETTINGS['STORAGE_PATH'] unless File.directory?(SETTINGS['STORAGE_PATH'])
+  cam.files.each {|file| cam.download(file) }
 when 'info'
   puts cam.version
   puts 
