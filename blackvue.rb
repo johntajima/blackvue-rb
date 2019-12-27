@@ -47,7 +47,7 @@ class Cam
   def files
     if response = get(File.join(base_url, FILES_PATH))
       _, list = response.split("\n").partition {|entry| entry.start_with?("v:") }
-      list.map {|entry| entry.split(",").first.gsub(/^n\:/,'') }
+      list.map {|entry| entry.split(",").first.gsub(/^n\:/,'') }.sort
     end
   end
 
