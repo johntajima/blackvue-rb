@@ -29,7 +29,7 @@ class Cam
   REAR_LIVEVIEW_PATH = "/blackvue_live.cgi?direction=R"
   MB                 = 1000 * 1000
   CAMERA_INDEX       = -5
-  TYPE_INDEX         = -6
+  VIDEO_INDEX        = -6
 
   attr_reader :storage_path, :base_url, :config
 
