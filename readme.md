@@ -40,11 +40,14 @@ Alternatively, you can connect to your dashcam by connecting to it's wifi access
 point. By default the IP address of the dashcam in this case would be 10.99.77.1
 
 
-## Script Usage
+## Usage
 
 Create a ~/.blackvue_config.yml file your home directory. An example is 
 shown in the sample file and set your dashcam_ip address and where to download
 the video files.
+
+Alternatively, you can just define the DASHCAM_IP and STORAGE_PATH via commandline
+options.
 
     Usage: blackvue.rb [command] [options]
 
@@ -55,18 +58,27 @@ the video files.
         -t, --type types                 Video types [N,E,P,M] (default to all)
         -c, --camera camera_type         Camera directions [F,R] (default to all)
 
+      Video Types: (E)vent, (N)ormal, (P)ark, (M)anual
+      Camera Types: (F)ront, (R)ear
+
+    Some examples:
+
     > blackvue.rb list
       - lists files on dashcam
+
+    > blackvue.rb list -t E,P -c F  
+      - lists files on dashcam that are event/park on front camera only
 
     > blackvue.rb download
       - download files to storage path
 
     > blackvue.rb download --ip 192.168.2.123 --path /my/new/path
-      - override the default and custom settings
+      - override the default/custom settings of the dashcam_ip and storage_path
 
     > blackvue.rb download -t E,N,P -c F
-      - overrides the video type and camera types
-      - by default all video types (E,N,P,M) and both cameras (F,R)
+      - overrides the video type and camera types to download
+      - by default all video types (E,N,P,M) and both cameras (F,R) are selected
+        if no optional parameter is defined.
 
     > blackvue.rb info
       - print out dashcam info
@@ -78,13 +90,16 @@ the video files.
         [config]
         version = 1.071
 
-
-### More to come
-
-### Using on a synology
+### Using on a Synology
 
 My use case was to run this on my Synology NAS so that the video files would
 get automatically downloaded to my NAS.
 
 I created a custom task that runs every few hours. Still working on 
 process and will refine readme and script once I get things working properly.
+
+### TO DO
+
+- maybe a few test cases
+- better error handling
+- better timeout mgmt
