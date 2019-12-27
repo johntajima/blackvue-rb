@@ -46,18 +46,19 @@ class Cam
 
   def files
     if response = get(File.join(base_url, FILES_PATH))
-      _, list = response.split("\n").partition {|entry| entry.start_with?("v:") }
-      list.map {|entry| entry.split(",").first.gsub(/^n\:/,'') }.sort
+      list = response.split("\n").drop(1)
+      temp_list = list.map do |entry| 
+        file = entry.split(",").first.gsub(/^n\:/,'') 
+        valid_video_type?(file) ? file : nil
+      end.compact.sort
     end
   end
 
   def download(file)
-    dest   = File.join(File.expand_path(storage_path), File.basename(file))
+    dest   = File.join(storage_path, File.basename(file))
     source = File.join(base_url, file)
 
-    if !valid_video_type?(file)
-      logger.debug("Skipping #{file} - not valid type or camera") && return
-    elsif dest_exists?(dest)
+    if dest_exists?(dest)
       logger.debug("#{dest} already exists...skipping") && return
     else
       start_time = Time.now
@@ -80,7 +81,7 @@ class Cam
   def log_report(dest, start_time)
     duration = Time.now - start_time
     size = File.size(dest).to_f / MB
-    logger.debug("Download complete [#{dest}] [#{"%.02f" % duration}s] [#{"%.02f" % size}mb] [#{"%.04f" % (size / duration)} mb/s]")
+    logger.debug("Downloaded #{dest} (#{"%.02f" % size}mb in #{"%.02f" % duration}s) [#{"%.04f" % (size / duration)} mb/s]")
   end
 
   def dest_exists?(file)
