@@ -46,34 +46,37 @@ Create a ~/.blackvue_config.yml file your home directory. An example is
 shown in the sample file and set your dashcam_ip address and where to download
 the video files.
 
+    Usage: blackvue.rb [command] [options]
 
-    > ./blackvue.rb
+      Commands are: list, download, info
 
-    prints out the current config settings of the script,
-    counts # of video files on the Dashcam, and version information of the
-    dashcam.
+        -i, --ip dashcam_ip              IP Address of Dashcam (eg: 192.168.2.111)
+        -p, --path storage_path          Directory to download videos to
+        -t, --type types                 Video types [N,E,P,M] (default to all)
+        -c, --camera camera_type         Camera directions [F,R] (default to all)
 
-    {"DASHCAM_IP"=>"192.168.2.111", "STORAGE_PATH"=>"/Volumes/Media/blackvue"}
-    found 191 files
-    [firmware]
-    version = 1.012
-    model = 900S2
-    language = English
-    [config]
-    version = 1.071
+    > blackvue.rb list
+      - lists files on dashcam
 
+    > blackvue.rb download
+      - download files to storage path
 
-    > ./blackvue.rb -l
+    > blackvue.rb download --ip 192.168.2.123 --path /my/new/path
+      - override the default and custom settings
 
-    Lists all files found on dashcam
+    > blackvue.rb download -t E,N,P -c F
+      - overrides the video type and camera types
+      - by default all video types (E,N,P,M) and both cameras (F,R)
 
-    > ./blackvue.rb -d
+    > blackvue.rb info
+      - print out dashcam info
 
-    Downloads all files - this could take a while.
-    If file already exists, and is larger than 10mb, it skips it.
-    If file exists but is empty or smaller than 10mb (to handle cases where
-    previous download failed), or doesn't exist it will download it.
-
+        [firmware]
+        version = 1.012
+        model = 900S2
+        language = English
+        [config]
+        version = 1.071
 
 
 ### More to come
@@ -85,6 +88,3 @@ get automatically downloaded to my NAS.
 
 I created a custom task that runs every few hours. Still working on 
 process and will refine readme and script once I get things working properly.
-
-
-

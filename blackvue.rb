@@ -5,10 +5,15 @@ require 'logger'
 require 'yaml'
 require 'optparse'
 
-USER_CONFIG = File.expand_path("~/.blackvue_config.yml")
+CAMERA_TYPES   = ['F', 'R']
+VIDEO_TYPES    = ['N', 'E', 'P', 'M']
+VALID_ACTIONS  = ['info', 'download', 'list']
+USER_CONFIG    = File.expand_path("~/.blackvue_config.yml")
 DEFAULT_CONFIG = {
   "DASHCAM_IP"   => "192.168.2.111",
-  "STORAGE_PATH" => "./blackvue_videos"
+  "STORAGE_PATH" => "./blackvue_videos",
+  "VIDEO_TYPE"   => VIDEO_TYPES,
+  "CAMERA_TYPE"  => CAMERA_TYPES
 }
 
 
@@ -23,13 +28,15 @@ class Cam
   LIVEVIEW_PATH      = "/blackvue_live.cgi"
   REAR_LIVEVIEW_PATH = "/blackvue_live.cgi?direction=R"
   MB                 = 1000 * 1000
+  CAMERA_INDEX       = -5
+  TYPE_INDEX         = -6
 
-  attr_reader :download_path, :base_url, :config
+  attr_reader :storage_path, :base_url, :config
 
-  def initialize(config = DEFAULT_CONFIG)
-    @config        = config
-    @base_url      = "http://#{@config.fetch("DASHCAM_IP")}"
-    @download_path = File.expand_path(@config.fetch("STORAGE_PATH"))
+  def initialize(config)
+    @config       = config
+    @base_url     = "http://#{@config.fetch(:dashcam_ip)}"
+    @storage_path = File.expand_path(@config.fetch(:storage_path))
   end
 
   def version
@@ -38,18 +45,20 @@ class Cam
   end
 
   def files
-    url = File.join(base_url, FILES_PATH)
-    return unless response = get(url)
-    _, list = response.split("\n").partition {|entry| entry.start_with?("v:") }
-    list.map {|entry| entry.split(",").first.gsub(/^n\:/,'') }
+    if response = get(File.join(base_url, FILES_PATH))
+      _, list = response.split("\n").partition {|entry| entry.start_with?("v:") }
+      list.map {|entry| entry.split(",").first.gsub(/^n\:/,'') }
+    end
   end
 
-  def download(file, path: download_path)
-    dest   = File.join(File.expand_path(path), File.basename(file))
+  def download(file)
+    dest   = File.join(File.expand_path(storage_path), File.basename(file))
     source = File.join(base_url, file)
-    if dest_exists?(dest)
-      logger.debug("#{dest} already exists...skipping")
-      return
+
+    if !valid_video_type?(file)
+      logger.debug("Skipping #{file} - not valid type or camera") && return
+    elsif dest_exists?(dest)
+      logger.debug("#{dest} already exists...skipping") && return
     else
       start_time = Time.now
       logger.debug("Downloading [#{source}]")
@@ -62,6 +71,11 @@ class Cam
 
 
   private
+
+  def valid_video_type?(file)
+    config[:camera_type].include?(file[CAMERA_INDEX]) &&
+    config[:video_type].include?(file[VIDEO_INDEX])
+  end
 
   def log_report(dest, start_time)
     duration = Time.now - start_time
@@ -91,49 +105,59 @@ class Cam
   end
 end
 
-SETTINGS ||= begin
-  default_config = DEFAULT_CONFIG
-  custom_config  = File.exist?(USER_CONFIG) ? YAML.load(File.open(USER_CONFIG).read) : {}
-  default_config.merge(custom_config)
+
+def get_settings
+  options = DEFAULT_CONFIG
+  custom  = File.exist?(USER_CONFIG) ? YAML.load(File.open(USER_CONFIG).read) : {}
+  options = options.merge(custom)
+  options = options.inject({}){|memo,(k,v)| memo[k.downcase.to_sym] = v; memo}
+  OptionParser.new do |opts|
+    opts.banner = "Usage: blackvue.rb [command] [options]\n\n\tCommands are: list, download, info\n\n"
+
+    opts.on("-i", "--ip dashcam_ip", String, "IP Address of Dashcam (eg: 192.168.2.111)") do |dashcam_ip|
+      options[:dashcam_ip] = dashcam_ip
+    end
+    opts.on("-p", "--path storage_path", String, "Directory to download videos to") do |storage_path|
+      options[:storage_path] = storage_path
+    end
+    opts.on("-t", "--type types", Array, "Video types [N,E,P,M] (default to all)") do |types|
+      options[:video_type] = types.map(&:upcase).empty? ? VIDEO_TYPES : VIDEO_TYPES & types.map(&:upcase)
+    end
+    opts.on("-c", "--camera camera_type", Array, "Camera directions [F,R] (default to all)") do |camera_type|
+      options[:camera_type] = camera_type.map(&:upcase).empty? ? CAMERA_TYPES : CAMERA_TYPES & camera_type.map(&:upcase)
+    end
+  end.parse!
+  options[:action] = VALID_ACTIONS.include?(ARGV[0]) ? ARGV[0] : nil
+  options
 end
 
-@options = {}
-OptionParser.new do |opts|
-  opts.on("-v", "--verbose", "Verbose Mode") do
-    @options[:verbose] = true
+def run_command(options)
+  puts options
+  cam = Cam.new(options)
+  case options[:action]
+  when 'list'
+    if files = cam.files
+      puts files
+      puts "Found #{files.count} files"  
+    end
+  when 'download'
+    FileUtils.mkdir_p options[:storage_path] unless File.directory?(options[:storage_path])
+    cam.files.each {|file| cam.download(file) }
+  when 'info'
+    puts cam.version
+  else
+    puts "Unknown command [#{options[:action]}]. Aborting."
   end
-  opts.on("-l", "--list", "List all files") do
-    @options[:action] = "list"
-  end
-  opts.on("-d", "--download", "Download all files") do
-    @options[:action] = "download"
-  end
-  opts.on("-i", "--info", "Displays info") do
-    @options[:action] = "info"
-  end
-end.parse!(into: @options)
-
-cam = Cam.new(SETTINGS)
-if @options.empty?
-  puts SETTINGS
-  puts "Found #{cam.files.count} files.\n#{cam.version}"
-  exit
 end
 
-case @options[:action]
-when 'list'
-  if files = cam.files
-    puts files
-    puts "found #{files.count} files"  
-  end
-when 'download'
-  FileUtils.mkdir_p SETTINGS['STORAGE_PATH'] unless File.directory?(SETTINGS['STORAGE_PATH'])
-  cam.files.each {|file| cam.download(file) }
-when 'info'
-  puts cam.version
-  puts 
-  puts SETTINGS
-else
-  p "Nothing to do."
+
+
+begin
+  run_command(get_settings)
 end
+
+
+
+
+
 
