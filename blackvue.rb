@@ -133,16 +133,18 @@ def get_settings
 end
 
 def run_command(options)
-  puts options
   cam = Cam.new(options)
   case options[:action]
   when 'list'
     if files = cam.files
       puts files
       puts "Found #{files.count} files"  
+    else
+      puts "No video files or error reading cam."
     end
   when 'download'
-    FileUtils.mkdir_p options[:storage_path] unless File.directory?(options[:storage_path])
+    path = options[:storage_path]
+    FileUtils.mkdir_p(path) unless File.directory?(path)
     cam.files.each {|file| cam.download(file) }
   when 'info'
     puts cam.version
@@ -154,7 +156,9 @@ end
 
 
 begin
-  run_command(get_settings)
+  options = get_settings
+  puts options
+  run_command(options)
 end
 
 
