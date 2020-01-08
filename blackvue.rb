@@ -85,7 +85,7 @@ class Cam
   end
 
   def dest_exists?(file)
-    File.exists?(file) && File.size(file) >= (10 * MB)
+    File.exists?(file) && File.size(file) >= (1 * MB)
   end
 
   def get(url)
